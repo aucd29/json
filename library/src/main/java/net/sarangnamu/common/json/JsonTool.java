@@ -17,15 +17,22 @@
  */
 package net.sarangnamu.common.json;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,56 +65,53 @@ import org.slf4j.LoggerFactory;
  */
 public class JsonTool {
     private static final Logger mLog = LoggerFactory.getLogger(JsonTool.class);
+    private static ObjectMapper mMapper;
 
-    public static String toJson(Object obj) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            //mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
-            mapper.setSerializationInclusion(Include.NON_DEFAULT);
+    private static void init() {
+        if (mMapper == null) {
+            mMapper = new ObjectMapper();
 
-            String json = mapper.writeValueAsString(obj);
-            return json;
-        } catch (JsonProcessingException e) {
-            mLog.error(e.getMessage());
+            mMapper.configure(JsonParser.Feature.ALLOW_COMMENTS, true);
+            mMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            mMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+            mMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
         }
-
-        return "";
     }
 
-    public static <T> Object toObj(String json, Class<? extends T> objectType) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-
-            T modDevices = mapper.readValue(json, objectType);
-
-            return modDevices;
-        } catch (JsonParseException e) {
-            mLog.error(e.getMessage());
-        } catch (JsonMappingException e) {
-            mLog.error(e.getMessage());
-        } catch (IOException e) {
-            mLog.error(e.getMessage());
-        }
-
-        return null;
+    public static ObjectMapper getMapper() {
+        init();
+        return mMapper;
     }
 
-    public static <T> Object toObj(String json, TypeReference<T> typeRef) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    public static String marshalling(Object obj) throws JsonProcessingException {
+        return getMapper().writeValueAsString(obj);
+    }
 
-            T modDevices = mapper.readValue(json, typeRef);
-            return modDevices;
-        } catch (JsonParseException e) {
-            mLog.error(e.getMessage());
-        } catch (JsonMappingException e) {
-            mLog.error(e.getMessage());
-        } catch (IOException e) {
-            mLog.error(e.getMessage());
+    public static <T> T unmarshalling(String json, Class<?> clazz) throws IOException, NullPointerException, JsonParseException, JsonMappingException {
+        if (json == null) {
+            throw new NullPointerException();
         }
 
-        return null;
+        return (T) getMapper().readValue(json, clazz);
+    }
+
+    public static <T> T unmarshalling(File fp, Class<?> clazz) throws IOException, NullPointerException, JsonParseException, JsonMappingException {
+        if (fp == null) {
+            throw new NullPointerException();
+        }
+
+        if (!fp.exists()) {
+            throw new FileNotFoundException();
+        }
+
+        BufferedReader reader = new BufferedReader(new FileReader(fp));
+        StringBuilder sb = new StringBuilder();
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            sb.append(line).append("\n");
+        }
+
+        return (T) getMapper().readValue(sb.toString(), clazz);
     }
 }

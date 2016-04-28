@@ -14,6 +14,6 @@ Step 2. Add the dependency
 
 ```gradle
 dependencies {
-	    compile 'com.github.aucd29:json:1.0.1'
+	    compile 'com.github.aucd29:json:1.0.2'
 }
 ```
